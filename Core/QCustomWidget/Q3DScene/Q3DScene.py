@@ -108,28 +108,43 @@ class Q3DScene(QOpenGLWidget):
         self.__init_shader()
 
         # +--- Setup vertices
+        a = 0.8
+        b = 0.5
         vertices = np.array([
-            (-0.5, -0.5, 0.0),
-            (0.5, -0.5, 0.0),
-            (0.0, 0.5, 0.0)
+            (-a/2, -b/2, 0.0),
+            (a/2, -b/2, 0.0),
+            (a/2, b/2, 0.0),
+            (-a/2, b/2, 0.0)
         ], dtype=np.float32)
+
+        indices = np.array([
+            (0, 2, 1),
+            (0, 3, 2)
+        ], dtype=np.uint32)
 
         # +--- Create VBO and VAO
         self.__VAO = GL.glGenVertexArrays(1)
         self.__VBO = GL.glGenBuffers(1)
+        self.__EBO = GL.glGenBuffers(1)
         GL.glBindVertexArray(self.__VAO)
 
         print(f"Q3DScene : Total vertices size : {vertices.nbytes}")
         print(f"Q3DScene : Stride : {vertices.strides[0]}")
+        print(f"Q3DScene : Total indices size : {indices.nbytes}")
 
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.__VBO)
         GL.glBufferData(GL.GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL.GL_STATIC_DRAW)
+
+        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.__EBO)
+        GL.glBufferData(GL.GL_ELEMENT_ARRAY_BUFFER, indices.nbytes, indices, GL.GL_STATIC_DRAW)
 
         GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, False, vertices.strides[0], ctypes.c_void_p(0 * vertices.itemsize))
         GL.glEnableVertexAttribArray(0)
 
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
         GL.glBindVertexArray(0)
+
+        GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE) # +--- To disable triangle fill.
 
 
     def resizeGL(self, width, height):
@@ -156,7 +171,7 @@ class Q3DScene(QOpenGLWidget):
 
         GL.glUseProgram(self.__shader_program)
         GL.glBindVertexArray(self.__VAO)
-        GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
+        GL.glDrawElements(GL.GL_TRIANGLES, 6, GL.GL_UNSIGNED_INT, ctypes.c_void_p(0)) # +--- Last ARGS = offset ---> 0
 
 
     def update(self):

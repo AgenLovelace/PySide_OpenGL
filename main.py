@@ -23,7 +23,6 @@ from PySide6.QtGui import QVector3D
 
 # +--- Custom libs
 from Core.QCustomWidget.Q3DScene import Q3DScene
-import Core.Logger
 
 
 class Main:
