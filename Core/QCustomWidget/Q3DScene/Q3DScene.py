@@ -27,6 +27,7 @@ from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtCore import Qt
 
 # +--- Custom libs
+from Core.QCustomWidget.Q3DScene.Q3DObject import Q3DObject
 
 
 # +--- Class Definition ------------------------------------------------------------------------------------------------
@@ -42,61 +43,7 @@ class Q3DScene(QOpenGLWidget):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         # +--- Define class attribut
-
-
-    def __init_shader(self):
-        """
-        Private method.
-        Used to load, compile and link shader program.
-        """
-
-        print("Q3DScene : Initialize shaders.")
-
-        # +--- Load and compile vertex shader
-        vertex_shader_sources = ""
-        with open("./Core/Shaders/simple.vert") as vertex_file:
-            vertex_shader_sources = vertex_file.read()
-
-        vertex_shader = GL.glCreateShader(GL.GL_VERTEX_SHADER)
-        GL.glShaderSource(vertex_shader, vertex_shader_sources)
-
-        # +--- Check compilation error
-        error_status = GL.glGetShaderiv(vertex_shader, GL.GL_COMPILE_STATUS)
-        if error_status != 0:
-            print(f"Q3DScene : Failed to compile vertex shader ! {error_status}")
-            print(f"Q3DScene : {GL.glGetShaderInfoLog(vertex_shader)}")
-
-
-        # +--- Load and compile fragment shader
-        fragment_shader_sources = ""
-        with open("./Core/Shaders/simple.frag") as fragment_file:
-            fragment_shader_sources = fragment_file.read()
-
-        fragment_shader = GL.glCreateShader(GL.GL_FRAGMENT_SHADER)
-        GL.glShaderSource(fragment_shader, fragment_shader_sources)
-
-        # +--- Check compilation error
-        error_status = GL.glGetShaderiv(fragment_shader, GL.GL_COMPILE_STATUS)
-        if error_status != 0:
-            print(f"Q3DScene : Failed to compile fragment shader ! {error_status}")
-            print(f"Q3DScene : {GL.glGetShaderInfoLog(fragment_shader)}")
-
-
-        # +--- Link shader
-        self.__shader_program = GL.glCreateProgram()
-        GL.glAttachShader(self.__shader_program, vertex_shader)
-        GL.glAttachShader(self.__shader_program, fragment_shader)
-        GL.glLinkProgram(self.__shader_program)
-
-        # +--- Check linking status
-        error_status = GL.glGetProgramiv(self.__shader_program, GL.GL_LINK_STATUS)
-        if error_status != 1:
-            print(f"Q3DScene : Failed to link shader program! {error_status}")
-            print(f"Q3DScene : {GL.glGetProgramInfoLog(self.__shader_program)}")
-
-        # +--- clean shader compile sources
-        GL.glDeleteShader(vertex_shader)
-        GL.glDeleteShader(fragment_shader)
+        self.object_in_scene = []
 
 
     def initializeGL(self):
@@ -105,46 +52,13 @@ class Q3DScene(QOpenGLWidget):
         Initialize all the OpenGL context.
         """
 
-        self.__init_shader()
+        # +--- Construct 2 triangles
+        self.object_in_scene.append(Q3DObject("Triangle_1", origin=(-0.5, -0.5, 0.0), color=(1.0, 0.0, 0.0), scene=self))
+        self.object_in_scene.append(
+            Q3DObject("Triangle_2", origin=(0.5, 0.5, 0.0), color=(0.0, 0.0, 1.0), scene=self))
 
-        # +--- Setup vertices
-        a = 0.8
-        b = 0.5
-        vertices = np.array([
-            (-a/2, -b/2, 0.0),
-            (a/2, -b/2, 0.0),
-            (a/2, b/2, 0.0),
-            (-a/2, b/2, 0.0)
-        ], dtype=np.float32)
-
-        indices = np.array([
-            (0, 2, 1),
-            (0, 3, 2)
-        ], dtype=np.uint32)
-
-        # +--- Create VBO and VAO
-        self.__VAO = GL.glGenVertexArrays(1)
-        self.__VBO = GL.glGenBuffers(1)
-        self.__EBO = GL.glGenBuffers(1)
-        GL.glBindVertexArray(self.__VAO)
-
-        print(f"Q3DScene : Total vertices size : {vertices.nbytes}")
-        print(f"Q3DScene : Stride : {vertices.strides[0]}")
-        print(f"Q3DScene : Total indices size : {indices.nbytes}")
-
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.__VBO)
-        GL.glBufferData(GL.GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL.GL_STATIC_DRAW)
-
-        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.__EBO)
-        GL.glBufferData(GL.GL_ELEMENT_ARRAY_BUFFER, indices.nbytes, indices, GL.GL_STATIC_DRAW)
-
-        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, False, vertices.strides[0], ctypes.c_void_p(0 * vertices.itemsize))
-        GL.glEnableVertexAttribArray(0)
-
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
-        GL.glBindVertexArray(0)
-
-        GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE) # +--- To disable triangle fill.
+        self.object_in_scene.append(
+            Q3DObject("Triangle_3", origin=(0.0, 0.0, 0.0), color=(0.0, 0.0, 1.0), scene=self))
 
 
     def resizeGL(self, width, height):
@@ -169,9 +83,8 @@ class Q3DScene(QOpenGLWidget):
         GL.glClearColor(0.0, 0.0, 0.0, 1.0)
         GL.glClear(GL.GL_COLOR_BUFFER_BIT)
 
-        GL.glUseProgram(self.__shader_program)
-        GL.glBindVertexArray(self.__VAO)
-        GL.glDrawElements(GL.GL_TRIANGLES, 6, GL.GL_UNSIGNED_INT, ctypes.c_void_p(0)) # +--- Last ARGS = offset ---> 0
+        for object in self.object_in_scene:
+            object.render()
 
 
     def update(self):
@@ -205,9 +118,8 @@ class Q3DScene(QOpenGLWidget):
 
 
     def __cleanGL(self):
-        pass
-        # GL.glDeleteVertexArrays(1, self.__VAO)
-        # GL.glDeleteBuffers(1, self.__VBO)
-        # GL.glDeleteProgram(self.__shader_program)
+
+        for object in self.object_in_scene:
+            object.destroy()
 
 
